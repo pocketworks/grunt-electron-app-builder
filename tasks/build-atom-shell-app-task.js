@@ -34,7 +34,8 @@ module.exports = function(grunt) {
                 build_dir: "build",
                 cache_dir: "cache",
                 app_dir: "app",
-                platforms: [plat]
+                platforms: [plat],
+                additional_src : [],
             });
 
             options.platforms.forEach(function(platform){
@@ -226,7 +227,7 @@ module.exports = function(grunt) {
         var assetUrl = foundAsset.url;
         var assetSize = foundAsset.size;
         var saveLocation = path.join(options.cache_dir,assetName);
-
+        grunt.log.writeln('Save location : ' +saveLocation);
         if (fs.existsSync(saveLocation))
         {
             var stats = fs.statSync(saveLocation);
@@ -346,6 +347,25 @@ module.exports = function(grunt) {
               fs.createReadStream(options.app_dir).pipe(fs.createWriteStream(appOutputDir+'.asar'));
             } else {
               grunt.log.error('Shared directory must be either a directory or an ASAR archive.')
+            }
+
+            // Copy additional files if specifed
+            if (options.additional_src && options.additional_src.length > 0) {
+                options.additional_src.forEach(function(src_path) {
+                    var name = path.basename(src_path)
+                    var additionalDirStats = fs.lstatSync(src_path);
+                    if (additionalDirStats.isDirectory()) {
+                        wrench.copyDirSyncRecursive(src_path, path.join(appOutputDir,name) , {
+                          forceDelete: true,
+                          excludeHiddenUnix: true,
+                          preserveFiles: false,
+                          preserveTimestamps: true,
+                          inflateSymlinks: false
+                      });
+                    }else {
+                         fs.createReadStream(src_path).pipe(fs.createWriteStream(path.join(appOutputDir,name)));
+                    }
+                })
             }
 
             grunt.log.ok("Build for platform " + requestedPlatform + " located at " + buildOutputDir);
